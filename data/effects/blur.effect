@@ -1,0 +1,69 @@
+// Desenfoque gaussiano separable. Se usa dos veces: horizontal y vertical.
+// dir    = tamaño de un pixel en UV para el eje del pase (1/ancho,0) o (0,1/alto)
+// radius = radio del desenfoque en pixeles
+
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float2 dir;
+uniform float radius;
+
+sampler_state textureSampler {
+	Filter    = Linear;
+	AddressU  = Clamp;
+	AddressV  = Clamp;
+};
+
+struct VertData {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+
+VertData VSDefault(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv  = v_in.uv;
+	return vert_out;
+}
+
+float wt(float k)
+{
+	return exp(-(k * k) / 32.0);
+}
+
+float4 tap2(float2 uv, float2 d, float k)
+{
+	return (image.Sample(textureSampler, uv + d * k) +
+		image.Sample(textureSampler, uv - d * k)) * wt(k);
+}
+
+float4 PSBlur(VertData v_in) : TARGET
+{
+	float2 d = dir * (radius / 10.0);
+
+	float4 acc = image.Sample(textureSampler, v_in.uv);
+	acc += tap2(v_in.uv, d, 1.0);
+	acc += tap2(v_in.uv, d, 2.0);
+	acc += tap2(v_in.uv, d, 3.0);
+	acc += tap2(v_in.uv, d, 4.0);
+	acc += tap2(v_in.uv, d, 5.0);
+	acc += tap2(v_in.uv, d, 6.0);
+	acc += tap2(v_in.uv, d, 7.0);
+	acc += tap2(v_in.uv, d, 8.0);
+	acc += tap2(v_in.uv, d, 9.0);
+	acc += tap2(v_in.uv, d, 10.0);
+
+	float wsum = 1.0 + 2.0 * (wt(1.0) + wt(2.0) + wt(3.0) + wt(4.0) + wt(5.0) +
+				  wt(6.0) + wt(7.0) + wt(8.0) + wt(9.0) + wt(10.0));
+
+	return acc / wsum;
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = PSBlur(v_in);
+	}
+}

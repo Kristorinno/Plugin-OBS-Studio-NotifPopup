@@ -1,0 +1,165 @@
+GUÍA PARA COMPILAR, INSTALAR Y ACTUALIZAR EL PLUGIN "NOTIFICACIÓN EMERGENTE" PARA OBS
+
+Esta guía explica paso a paso cómo preparar el entorno, compilar e instalar el plugin en Windows.
+
+------------------------------------------------------------
+PARTE 1: PREPARAR LA PC (UNA SOLA VEZ)
+------------------------------------------------------------
+
+1.1 Visual Studio
+- Descargá Visual Studio Community (gratis en visualstudio.microsoft.com).
+- En el instalador, marcá la carga de trabajo "Desarrollo para el escritorio con C++".
+- Abrí la pestaña "Componentes individuales", escribí 22621 en el buscador y tildá "Windows 11 SDK (10.0.22621.0)". Sirve también para Windows 10.
+- Nota: Evitá usar la versión "Insiders" (versión de prueba). Usá la versión estable.
+- Para ver qué tenés instalado y modificarlo: botón Windows, escribí "Visual Studio Installer" y entrá a "Modificar".
+
+1.2 CMake
+- Descargalo de cmake.org (instalador "Windows x64 Installer").
+- Durante la instalación, elegí la opción "Add CMake to the system PATH".
+- Para ver tu versión, abrí PowerShell y escribí: cmake --version
+- Reiniciá la PC al terminar la instalación.
+
+1.3 Dependencias
+- No hace falta instalar Qt ni bajar OBS manualmente. La plantilla los descarga sola durante la compilación.
+
+------------------------------------------------------------
+PARTE 2: ARMAR LA CARPETA DEL PROYECTO
+------------------------------------------------------------
+
+2.1 Entrá a github.com/obsproject/obs-plugintemplate, tocá "Code" y "Download ZIP".
+
+2.2 Descomprimilo en una ruta corta y sin espacios (ej. C:\dev\notif-popup).
+- Adentro queda una carpeta llamada obs-plugintemplate-master. ESA es la carpeta del proyecto (ahí están CMakeLists.txt, CMakePresets.json, buildspec.json, src y data).
+- Todos los comandos de ahora en adelante se ejecutan dentro de esa carpeta.
+
+2.3 Descomprimí tu zip del plugin (obs-notif-popup.zip) en otro lugar.
+
+2.4 Copiá tus archivos al proyecto:
+- Abrí la carpeta src de la plantilla y borrá SOLO el archivo plugin-main.c. (Los archivos plugin-support se quedan).
+- Copiá dentro de esa src tus 6 archivos: plugin-main.cpp, notif-filter.cpp, notif-filter.hpp, notif-dock.cpp, notif-dock.hpp, bible-data.cpp, bible-data.hpp, bible-server.cpp, bible-server.hpp, bible-window.cpp, bible-window.hpp.
+- Copiá tu carpeta data sobre la data de la plantilla (aceptá fusionar). Debe existir data\effects\blur.effect.
+
+------------------------------------------------------------
+PARTE 3: EDITAR TRES ARCHIVOS
+------------------------------------------------------------
+(Se editan con el Bloc de notas. Guardá siempre con Ctrl + S, sin usar "Guardar como", para no agregar .txt al nombre).
+
+3.1 buildspec.json
+- Buscá la línea "name" y dejala así: "name": "obs-notif-popup"
+
+3.2 CMakeLists.txt
+a) Cerca del principio hay dos líneas option(...). Si terminan en OFF, cambiá ese OFF por ON:
+   option(ENABLE_FRONTEND_API "..." ON)
+   option(ENABLE_QT "..." ON)
+b) Buscá la línea target_sources(...) que tiene src/plugin-main.c y cambiá SOLO ese texto para que quede así (todo en una línea):
+   target_sources(${CMAKE_PROJECT_NAME} PRIVATE src/plugin-main.cpp src/notif-filter.cpp src/notif-dock.cpp src/bible-data.cpp src/bible-server.cpp src/bible-window.cpp)
+
+3.3 CMakePresets.json
+a) Apretá Ctrl + F y buscá ENABLE_. Cambiá false por true en estas dos líneas (sin tocar comillas ni comas):
+   "ENABLE_FRONTEND_API": true
+   "ENABLE_QT": true
+b) Si tenés Visual Studio 2026, apretá Ctrl + H, buscá Visual Studio 17 2022 y reemplazá por Visual Studio 18 2026 (clic en "Reemplazar todo"). Si tenés Visual Studio 2022, no cambies nada.
+
+------------------------------------------------------------
+PARTE 4: COMPILAR
+------------------------------------------------------------
+
+4.1 Abrir PowerShell en la carpeta correcta
+- Abrí en el Explorador la carpeta obs-plugintemplate-master (la de adentro).
+- Hacé clic en la barra de direcciones, escribí powershell y apretá Enter.
+- Comprobación: escribí dir. Deben aparecer CMakeLists.txt, CMakePresets.json y buildspec.json. Si no aparecen, estás en la carpeta equivocada: escribí cd obs-plugintemplate-master y Enter.
+
+4.2 Ejecutá los comandos UNO POR VEZ (esperá a que vuelva a aparecer la línea PS después de cada uno):
+
+$env:_CL_ = "/WX-"
+cmake --preset windows-x64
+- La primera vez tarda varios minutos (descarga OBS y Qt). Terminó bien cuando dice "Build files have been written to".
+
+cmake --build --preset windows-x64
+- Terminó bien cuando aparece obs-notif-popup.dll y no hay errores en rojo.
+
+cmake --install build_x64 --config RelWithDebInfo --prefix release
+- Crea la carpeta release con el resultado final.
+
+------------------------------------------------------------
+PARTE 5: INSTALAR EN OBS Y USARLO
+------------------------------------------------------------
+
+5.1 Cerrá OBS por completo.
+
+5.2 Dentro de la carpeta release, entrá a la carpeta obs-notif-popup (debe tener adentro bin y data). COPIALA.
+
+5.3 Pegala en C:\ProgramData\obs-studio\plugins\
+- ProgramData está oculta. Pegá esa ruta en la barra de direcciones del Explorador (o activá Vista > Elementos ocultos).
+- Si la carpeta plugins no existe, creala.
+- Aceptá el permiso de administrador si lo pide.
+
+5.4 Comprobá que existan estos dos archivos:
+- C:\ProgramData\obs-studio\plugins\obs-notif-popup\bin\64bit\obs-notif-popup.dll
+- C:\ProgramData\obs-studio\plugins\obs-notif-popup\data\effects\blur.effect
+
+5.5 Abrí OBS:
+- El dock "Notificación emergente" está en el menú Docks.
+- En tu fuente de imagen o video: clic derecho, Filtros, el signo + de abajo a la izquierda, "Notificación emergente".
+- En el dock, elegí esa fuente en el selector de arriba.
+- Botón de la lista: escribís las 9 frases. Botones 1 al 9: elegís una. "Mostrar notificación": la muestra. X: la oculta. Engranaje: abre los ajustes.
+- Atajo de teclado: en Ajustes de OBS, Atajos, buscá "Acción de notificación" y asignale una tecla.
+
+------------------------------------------------------------
+PARTE 6: ACTUALIZAR DESPUÉS DE CAMBIOS EN EL CÓDIGO
+------------------------------------------------------------
+
+6.1 Copiá los archivos nuevos sobre los de la carpeta src y elegí "Reemplazar los archivos en el destino". No hace falta borrar nada.
+
+6.2 Abrí PowerShell en obs-plugintemplate-master (paso 4.1) y ejecutá solo estos dos, uno por vez:
+cmake --build --preset windows-x64
+cmake --install build_x64 --config RelWithDebInfo --prefix release
+(No repitas cmake --preset, salvo que hayas tocado CMakeLists.txt o agregado archivos nuevos).
+
+6.3 Con OBS cerrado, copiá de nuevo la carpeta obs-notif-popup de release a C:\ProgramData\obs-studio\plugins\ y elegí reemplazar.
+
+Nota: Los cambios en el shader (blur.effect) no necesitan compilar: reemplazás ese archivo en la carpeta data del plugin y reiniciás OBS. Los ajustes del dock tampoco necesitan compilar.
+
+------------------------------------------------------------
+PARTE 7: SOLUCIÓN DE ERRORES (TROUBLESHOOTING)
+------------------------------------------------------------
+
+- "Could not read presets ... CMakePresets.json File not found"
+  PowerShell está en la carpeta equivocada. Entrá a la de adentro: cd obs-plugintemplate-master
+
+- "generator Visual Studio 17 2022 could not find any instance of Visual Studio"
+  Tenés otra versión de Visual Studio. Para el 2026, hacé el paso 3.3 b). Para el 2022, instalalo con el componente de C++.
+
+- "generator ... Does not match the generator used previously"
+  Quedó una carpeta de trabajo vieja. Borrala con: Remove-Item -Recurse -Force build_x64 y volvé a ejecutar cmake --preset windows-x64.
+
+- "no Windows SDK with that version was found" (version 10.0.22621)
+  Instalá el componente "Windows 11 SDK (10.0.22621.0)" desde el Visual Studio Installer (paso 1.1).
+
+- "No se puede abrir el archivo incluir: QWidget" o "QColor"
+  Qt está apagado. Hacé el paso 3.3 a) y volvé a configurar con cmake --preset windows-x64 antes de compilar. Compilar solo no alcanza.
+
+- "obs_frontend_add_event_cb no se encontró el identificador"
+  Error en el código del plugin. Los archivos actuales ya usan el nombre correcto (add_event_callback).
+
+- "cmake --install dice File INSTALL cannot find ... obs-notif-popup.dll"
+  La compilación falló antes. Revisá los errores del paso cmake --build.
+
+- "No deja copiar la .dll"
+  OBS sigue abierto. Cerralo desde el Administrador de tareas.
+
+- "Compila pero no aparece el dock o el filtro"
+  En OBS: Ayuda > Archivos de registro > Ver registro actual. Buscá las líneas que digan notif-popup.
+
+- "execute_process failed ... Child return code: 1" (Durante la configuración)
+  Falla al intentar compilar las librerías internas de OBS. Suele pasar por usar una versión de Visual Studio "Insiders" (muy nueva) que es más estricta con las advertencias del código de OBS y las trata como errores.
+  Solución rápida: En la misma ventana de PowerShell, antes de configurar, escribí: $env:_CL_ = "/WX-"
+  Luego borrá la carpeta build_x64 y volvé a configurar con cmake --preset windows-x64.
+
+- "CMake Error: Could not read presets ... Missing ',' or ']' in array declaration"
+  El archivo CMakePresets.json tiene un error de sintaxis (falta una coma o una llave). Podés validarlo abriendo PowerShell y ejecutando: Get-Content CMakePresets.json | ConvertFrom-Json. Si da error, revisá el archivo.
+
+------------------------------------------------------------
+CONSEJO GENERAL
+------------------------------------------------------------
+Cuando algo falle, copiá o fotografiá el mensaje completo, sobre todo las líneas rojas del final. Con eso se encuentra el problema rápido.
